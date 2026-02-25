@@ -6,13 +6,112 @@ and organizes it by page.
 
 import logging
 import re
+import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from pyOneNote.Header import Header
 from pyOneNote.OneDocument import OneDocment
+from pyOneNote.FileNode import PropertyID, PropertySet
 
 logger = logging.getLogger(__name__)
+
+
+def _patch_pyonenote_array_of_property_values() -> None:
+    """Monkey-patch pyOneNote to support ArrayOfPropertyValues (type 0x10).
+
+    The upstream pyOneNote library raises NotImplementedError for property
+    type 0x10 (prtArrayOfPropertyValues).  Per the MS-ONESTORE spec
+    (section 2.6.9), the format is:
+
+        cProperties : uint32  — number of child PropertySets
+        prid        : PropertyID (4 bytes) — only if cProperties > 0
+        Data        : cProperties consecutive PropertySet structures
+    """
+    _original_init = PropertySet.__init__
+
+    def _patched_init(self, file, OIDs=None, OSIDs=None,
+                      ContextIDs=None, document=None):
+        self.current = file.tell()
+        self.cProperties, = struct.unpack('<H', file.read(2))
+        self.rgPrids = []
+        self.indent = ''
+        self.document = document
+        self.current_revision = document.cur_revision if document else None
+        self._formated_properties = None
+
+        for _i in range(self.cProperties):
+            self.rgPrids.append(PropertyID(file))
+
+        self.rgData = []
+        for i in range(self.cProperties):
+            ptype = self.rgPrids[i].type
+            if ptype == 0x1:
+                self.rgData.append(None)
+            elif ptype == 0x2:
+                self.rgData.append(self.rgPrids[i].boolValue)
+            elif ptype == 0x3:
+                self.rgData.append(struct.unpack('c', file.read(1))[0])
+            elif ptype == 0x4:
+                self.rgData.append(struct.unpack('2s', file.read(2))[0])
+            elif ptype == 0x5:
+                self.rgData.append(struct.unpack('4s', file.read(4))[0])
+            elif ptype == 0x6:
+                self.rgData.append(struct.unpack('8s', file.read(8))[0])
+            elif ptype == 0x7:
+                from pyOneNote.FileNode import PrtFourBytesOfLengthFollowedByData
+                self.rgData.append(
+                    PrtFourBytesOfLengthFollowedByData(file, self)
+                )
+            elif ptype in (0x8, 0x9):
+                count = 1
+                if ptype == 0x9:
+                    count, = struct.unpack('<I', file.read(4))
+                self.rgData.append(
+                    PropertySet.get_compact_ids(OIDs, count)
+                )
+            elif ptype in (0xA, 0xB):
+                count = 1
+                if ptype == 0xB:
+                    count, = struct.unpack('<I', file.read(4))
+                self.rgData.append(
+                    PropertySet.get_compact_ids(OSIDs, count)
+                )
+            elif ptype in (0xC, 0xD):
+                count = 1
+                if ptype == 0xD:
+                    count, = struct.unpack('<I', file.read(4))
+                self.rgData.append(
+                    PropertySet.get_compact_ids(ContextIDs, count)
+                )
+            elif ptype == 0x10:
+                # ArrayOfPropertyValues (MS-ONESTORE section 2.6.9)
+                arr_count, = struct.unpack('<I', file.read(4))
+                child_sets = []
+                if arr_count > 0:
+                    # Read prid (must have type 0x11); we validate but
+                    # don't use it — each child is a full PropertySet.
+                    _arr_prid = PropertyID(file)
+                    for _j in range(arr_count):
+                        child = PropertySet(
+                            file, OIDs, OSIDs, ContextIDs, document,
+                        )
+                        child_sets.append(child)
+                self.rgData.append(child_sets)
+            elif ptype == 0x11:
+                self.rgData.append(
+                    PropertySet(file, OIDs, OSIDs, ContextIDs, document)
+                )
+            else:
+                raise ValueError(
+                    f'rgPrids[{i}].type 0x{ptype:x} is not valid'
+                )
+
+    PropertySet.__init__ = _patched_init
+
+
+# Apply the patch at import time
+_patch_pyonenote_array_of_property_values()
 
 # JCID type names from the OneNote spec
 _PAGE_META = "jcidPageMetaData"
