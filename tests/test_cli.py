@@ -90,11 +90,15 @@ class TestMainHappyPath:
 
     def test_flat_output(self, tmp_path):
         """--flat flag produces flat directory structure."""
-        result = main([
-            "-i", str(NOTEBOOK_DIR),
-            "-o", str(tmp_path / "flat_out"),
-            "--flat",
-        ])
+        result = main(
+            [
+                "-i",
+                str(NOTEBOOK_DIR),
+                "-o",
+                str(tmp_path / "flat_out"),
+                "--flat",
+            ]
+        )
         assert result == 0
         out_dir = tmp_path / "flat_out"
         md_files = list(out_dir.rglob("*.md"))
@@ -106,10 +110,14 @@ class TestMainErrorHandling:
 
     def test_missing_input_dir(self, tmp_path):
         """Returns 1 for non-existent input directory."""
-        result = main([
-            "-i", str(tmp_path / "nonexistent"),
-            "-o", str(tmp_path / "out"),
-        ])
+        result = main(
+            [
+                "-i",
+                str(tmp_path / "nonexistent"),
+                "-o",
+                str(tmp_path / "out"),
+            ]
+        )
         assert result == 1
 
     def test_empty_input_dir(self, tmp_path):
@@ -134,17 +142,19 @@ class TestMainErrorHandling:
     @pytest.mark.skipif(not _HAS_TEST_DATA, reason="test_data not available")
     def test_converter_error_handled(self, tmp_path):
         """Converter errors are collected but don't crash."""
-        with patch(
-            "onenote_export.cli.MarkdownConverter"
-        ) as mock_converter_cls:
+        with patch("onenote_export.cli.MarkdownConverter") as mock_converter_cls:
             mock_converter = MagicMock()
             mock_converter.convert_notebook.side_effect = RuntimeError("write failed")
             mock_converter_cls.return_value = mock_converter
 
-            result = main([
-                "-i", str(NOTEBOOK_DIR),
-                "-o", str(tmp_path / "out"),
-            ])
+            result = main(
+                [
+                    "-i",
+                    str(NOTEBOOK_DIR),
+                    "-o",
+                    str(tmp_path / "out"),
+                ]
+            )
             # Should handle the error gracefully
             assert result in (0, 2)
 
@@ -156,11 +166,15 @@ class TestMainLogging:
     def test_verbose_sets_info_level(self, tmp_path):
         """--verbose flag sets INFO logging."""
         with patch("onenote_export.cli.logging.basicConfig") as mock_config:
-            main([
-                "-i", str(NOTEBOOK_DIR),
-                "-o", str(tmp_path / "out"),
-                "--verbose",
-            ])
+            main(
+                [
+                    "-i",
+                    str(NOTEBOOK_DIR),
+                    "-o",
+                    str(tmp_path / "out"),
+                    "--verbose",
+                ]
+            )
             mock_config.assert_called_once()
             call_kwargs = mock_config.call_args[1]
             assert call_kwargs["level"] == logging.INFO
@@ -168,11 +182,15 @@ class TestMainLogging:
     def test_debug_sets_debug_level(self, tmp_path):
         """--debug flag sets DEBUG logging."""
         with patch("onenote_export.cli.logging.basicConfig") as mock_config:
-            main([
-                "-i", str(NOTEBOOK_DIR),
-                "-o", str(tmp_path / "out"),
-                "--debug",
-            ])
+            main(
+                [
+                    "-i",
+                    str(NOTEBOOK_DIR),
+                    "-o",
+                    str(tmp_path / "out"),
+                    "--debug",
+                ]
+            )
             mock_config.assert_called_once()
             call_kwargs = mock_config.call_args[1]
             assert call_kwargs["level"] == logging.DEBUG
@@ -180,10 +198,14 @@ class TestMainLogging:
     def test_default_warning_level(self, tmp_path):
         """Default log level is WARNING."""
         with patch("onenote_export.cli.logging.basicConfig") as mock_config:
-            main([
-                "-i", str(NOTEBOOK_DIR),
-                "-o", str(tmp_path / "out"),
-            ])
+            main(
+                [
+                    "-i",
+                    str(NOTEBOOK_DIR),
+                    "-o",
+                    str(tmp_path / "out"),
+                ]
+            )
             mock_config.assert_called_once()
             call_kwargs = mock_config.call_args[1]
             assert call_kwargs["level"] == logging.WARNING

@@ -194,10 +194,16 @@ class TestDeduplicateObjects:
 
     def test_fewer_than_4_objects_returned_unchanged(self):
         objs = [
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="1",
-                            properties={"RichEditTextUnicode": "Hello"}),
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="2",
-                            properties={"RichEditTextUnicode": "World"}),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="1",
+                properties={"RichEditTextUnicode": "Hello"},
+            ),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="2",
+                properties={"RichEditTextUnicode": "World"},
+            ),
         ]
         result = _deduplicate_objects(objs)
         assert len(result) == 2
@@ -217,8 +223,11 @@ class TestDeduplicateObjects:
         """Only one content fingerprint means no duplicates possible."""
         objs = [
             ExtractedObject(obj_type="jcidOutlineElementNode", identity="1"),
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="2",
-                            properties={"RichEditTextUnicode": "Hello"}),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="2",
+                properties={"RichEditTextUnicode": "Hello"},
+            ),
             ExtractedObject(obj_type="jcidOutlineElementNode", identity="3"),
             ExtractedObject(obj_type="jcidOutlineElementNode", identity="4"),
         ]
@@ -228,14 +237,26 @@ class TestDeduplicateObjects:
     def test_duplicates_removed(self):
         """Duplicate content objects should be deduplicated."""
         objs = [
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="1",
-                            properties={"RichEditTextUnicode": "Hello"}),
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="2",
-                            properties={"RichEditTextUnicode": "World"}),
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="3",
-                            properties={"RichEditTextUnicode": "Hello"}),
-            ExtractedObject(obj_type="jcidRichTextOENode", identity="4",
-                            properties={"RichEditTextUnicode": "World"}),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="1",
+                properties={"RichEditTextUnicode": "Hello"},
+            ),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="2",
+                properties={"RichEditTextUnicode": "World"},
+            ),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="3",
+                properties={"RichEditTextUnicode": "Hello"},
+            ),
+            ExtractedObject(
+                obj_type="jcidRichTextOENode",
+                identity="4",
+                properties={"RichEditTextUnicode": "World"},
+            ),
         ]
         result = _deduplicate_objects(objs)
         assert len(result) == 2
@@ -250,7 +271,8 @@ class TestBuildTopLevelOeIds:
     def test_collects_outline_node_children(self):
         objs = [
             ExtractedObject(
-                obj_type="jcidOutlineNode", identity="outline-1",
+                obj_type="jcidOutlineNode",
+                identity="outline-1",
                 properties={"ElementChildNodesOfVersionHistory": ["oe-1", "oe-2"]},
             ),
         ]
@@ -261,7 +283,8 @@ class TestBuildTopLevelOeIds:
         """A single string ref should be handled as a list."""
         objs = [
             ExtractedObject(
-                obj_type="jcidOutlineNode", identity="outline-1",
+                obj_type="jcidOutlineNode",
+                identity="outline-1",
                 properties={"ElementChildNodesOfVersionHistory": "oe-single"},
             ),
         ]
@@ -278,7 +301,8 @@ class TestBuildTopLevelOeIds:
     def test_empty_refs(self):
         objs = [
             ExtractedObject(
-                obj_type="jcidOutlineNode", identity="outline-1",
+                obj_type="jcidOutlineNode",
+                identity="outline-1",
                 properties={"ElementChildNodesOfVersionHistory": []},
             ),
         ]
@@ -417,7 +441,8 @@ class TestExtractRichText:
 
     def test_returns_none_for_empty_text(self):
         obj = ExtractedObject(
-            obj_type="jcidRichTextOENode", identity="1",
+            obj_type="jcidRichTextOENode",
+            identity="1",
             properties={},
         )
         result = _extract_rich_text(obj, {}, None)
@@ -425,7 +450,8 @@ class TestExtractRichText:
 
     def test_returns_none_for_whitespace_only(self):
         obj = ExtractedObject(
-            obj_type="jcidRichTextOENode", identity="1",
+            obj_type="jcidRichTextOENode",
+            identity="1",
             properties={"RichEditTextUnicode": "   "},
         )
         result = _extract_rich_text(obj, {}, None)
@@ -433,7 +459,8 @@ class TestExtractRichText:
 
     def test_extracts_text_with_formatting(self):
         obj = ExtractedObject(
-            obj_type="jcidRichTextOENode", identity="1",
+            obj_type="jcidRichTextOENode",
+            identity="1",
             properties={"RichEditTextUnicode": "Hello"},
         )
         style = {"Bold": True, "Italic": True}
@@ -445,7 +472,8 @@ class TestExtractRichText:
 
     def test_extracts_text_from_ascii(self):
         obj = ExtractedObject(
-            obj_type="jcidRichTextOENode", identity="1",
+            obj_type="jcidRichTextOENode",
+            identity="1",
             properties={"TextExtendedAscii": "World"},
         )
         result = _extract_rich_text(obj, {}, None)

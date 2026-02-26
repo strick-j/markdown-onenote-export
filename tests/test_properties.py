@@ -171,7 +171,10 @@ class TestPropertyTypeExtraction:
         assert property_type(PICTURE_CONTAINER) == PropertyType.OBJECT_ID
 
     def test_rich_edit_text_unicode(self):
-        assert property_type(RICH_EDIT_TEXT_UNICODE) == PropertyType.FOUR_BYTES_OF_LENGTH_FOLLOWED_BY_DATA
+        assert (
+            property_type(RICH_EDIT_TEXT_UNICODE)
+            == PropertyType.FOUR_BYTES_OF_LENGTH_FOLLOWED_BY_DATA
+        )
 
     def test_row_count_is_four_bytes(self):
         assert property_type(ROW_COUNT) == PropertyType.FOUR_BYTES
