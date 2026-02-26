@@ -85,9 +85,36 @@ class MarkdownConverter:
             lines.append(f"# {page.title}")
             lines.append("")
 
-        # Render each content element
+        # Render each content element, tracking ordered list counters
+        # per indent level so numbered lists increment correctly.
+        ordered_counters: dict[int, int] = {}
+        prev_list_type = ""
+        prev_indent = -1
+
         for element in page.elements:
-            md = self._render_element(element)
+            if isinstance(element, RichText) and element.list_type == "ordered":
+                level = element.indent_level
+                # Initialize counter for new indent levels
+                if level not in ordered_counters:
+                    ordered_counters[level] = 0
+                # Clear deeper level counters when returning to a
+                # shallower level (they restart on re-entry)
+                for k in list(ordered_counters):
+                    if k > level:
+                        del ordered_counters[k]
+                ordered_counters[level] += 1
+                md = self._render_rich_text(
+                    element, ordered_number=ordered_counters[level],
+                )
+                prev_list_type = "ordered"
+                prev_indent = level
+            else:
+                if not (isinstance(element, RichText) and element.list_type):
+                    ordered_counters.clear()
+                    prev_list_type = ""
+                    prev_indent = -1
+                md = self._render_element(element)
+
             if md:
                 lines.append(md)
                 lines.append("")
@@ -112,7 +139,9 @@ class MarkdownConverter:
             return self._render_embedded_file(element)
         return ""
 
-    def _render_rich_text(self, rt: RichText) -> str:
+    def _render_rich_text(
+        self, rt: RichText, ordered_number: int = 0,
+    ) -> str:
         """Render rich text to Markdown."""
         parts: list[str] = []
 
@@ -153,7 +182,11 @@ class MarkdownConverter:
             result = f"{prefix} {result}"
         elif rt.list_type:
             indent = "   " * rt.indent_level
-            marker = "1." if rt.list_type == "ordered" else "-"
+            if rt.list_type == "ordered":
+                num = ordered_number if ordered_number > 0 else 1
+                marker = f"{num}."
+            else:
+                marker = "-"
             result = f"{indent}{marker} {result}"
         elif rt.indent_level > 0:
             indent = "   " * rt.indent_level

@@ -4,6 +4,7 @@ Parses actual OneNote files through the full pipeline
 (parse → extract → convert) and verifies table export.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -483,7 +484,7 @@ class TestListPreservation:
     def test_markdown_numbered_list_syntax(
         self, extracted_section, tmp_path
     ):
-        """Numbered list items should render with '1.' prefix."""
+        """Numbered list items should render with incrementing numbers."""
         converter = MarkdownConverter(tmp_path)
         page = next(
             p for p in extracted_section.pages if p.title == "Note 2"
@@ -491,11 +492,15 @@ class TestListPreservation:
         md = converter.render_page(page)
         numbered_lines = [
             line for line in md.splitlines()
-            if line.strip().startswith("1.")
+            if re.match(r"\s*\d+\.", line)
         ]
         assert len(numbered_lines) == 8, (
             f"Expected 8 numbered lines, got {len(numbered_lines)}"
         )
+        # Top-level items should increment
+        top_level = [l for l in numbered_lines if not l.startswith(" ")]
+        assert top_level[0].startswith("1.")
+        assert top_level[1].startswith("2.")
 
     def test_markdown_nested_bullet_indentation(
         self, extracted_section, tmp_path
