@@ -1,19 +1,21 @@
-# markdown-onenote-export
+# onenote-exporter
 
-[![GitHub Release](https://img.shields.io/github/v/release/strick-j/markdown-onenote-export)](https://github.com/strick-j/markdown-onenote-export/releases)
-[![Tests](https://github.com/strick-j/markdown-onenote-export/actions/workflows/test.yml/badge.svg)](https://github.com/strick-j/markdown-onenote-export/actions/workflows/test.yml)
-[![Security](https://github.com/strick-j/markdown-onenote-export/actions/workflows/security.yml/badge.svg)](https://github.com/strick-j/markdown-onenote-export/actions/workflows/security.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/strick-j/onenote-exporter)](https://github.com/strick-j/onenote-exporter/releases)
+[![Tests](https://github.com/strick-j/onenote-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/strick-j/onenote-exporter/actions/workflows/test.yml)
+[![Security](https://github.com/strick-j/onenote-exporter/actions/workflows/security.yml/badge.svg)](https://github.com/strick-j/onenote-exporter/actions/workflows/security.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 
-A command-line tool that exports Microsoft OneNote `.one` files to Markdown.
+A command-line tool that exports Microsoft OneNote `.one` files to Markdown or HTML.
 
-OneNote stores notebooks in a proprietary binary format (MS-ONESTORE). This tool parses those files and converts pages — including text formatting, images, tables, and attachments — into clean, version-control-friendly Markdown.
+OneNote stores notebooks in a proprietary binary format (MS-ONESTORE). This tool parses those files and converts pages — including text formatting, images, tables, and attachments — into clean, version-control-friendly Markdown or self-contained HTML.
 
 ## Features
 
-- Converts `.one` files to Markdown with formatting preserved (bold, italic, strikethrough, links)
-- Extracts images and embedded file attachments alongside Markdown output
-- Renders tables in standard Markdown table syntax
+- Converts `.one` files to **Markdown** or **HTML** (or both at once)
+- Preserves formatting: bold, italic, underline, strikethrough, links, super/subscript
+- HTML output is self-contained with embedded CSS — no external dependencies
+- Extracts images and embedded file attachments alongside output files
+- Renders tables in Markdown table syntax or HTML `<table>` elements
 - Automatically deduplicates section versions (e.g. `Notes.one` vs `Notes (On 2-25-26).one`)
 - Preserves notebook/section/page hierarchy in the output directory
 - Optional flat output mode (no notebook subdirectories)
@@ -26,8 +28,8 @@ OneNote stores notebooks in a proprietary binary format (MS-ONESTORE). This tool
 ## Installation
 
 ```bash
-git clone https://github.com/strick-j/markdown-onenote-export.git
-cd markdown-onenote-export
+git clone https://github.com/strick-j/onenote-exporter.git
+cd onenote-exporter
 
 # Create and activate a virtual environment (recommended)
 python3 -m venv .venv
@@ -50,17 +52,30 @@ onenote-export -i <input_dir> -o <output_dir> [options]
 | Flag | Long Form | Required | Description |
 |------|-----------|----------|-------------|
 | `-i` | `--input` | Yes | Directory containing `.one` files (searched recursively) |
-| `-o` | `--output` | Yes | Directory where Markdown files will be written |
+| `-o` | `--output` | Yes | Directory where output files will be written |
+| `-f` | `--format` | No | Output format: `markdown` (default), `html`, or `both` |
 | `-v` | `--verbose` | No | Show progress details (INFO level logging) |
 | | `--debug` | No | Show detailed diagnostic output (DEBUG level logging) |
 | | `--flat` | No | Write all sections to the output root without notebook subdirectories |
 
 ### Examples
 
-**Basic export:**
+**Basic export (Markdown):**
 
 ```bash
 onenote-export -i ~/OneDrive/OneNote_Notebooks -o ~/Documents/exported_notes
+```
+
+**Export as HTML:**
+
+```bash
+onenote-export -i ~/OneDrive/OneNote_Notebooks -o ~/Documents/exported_notes --format html
+```
+
+**Export both Markdown and HTML:**
+
+```bash
+onenote-export -i ~/OneDrive/OneNote_Notebooks -o ~/Documents/exported_notes -f both
 ```
 
 **Verbose output with flat structure:**
@@ -100,7 +115,7 @@ Files with date suffixes like `(On 2-25-26)` are recognized as older versions of
 output_dir/
 ├── Work Notebook/
 │   ├── Meeting Notes/
-│   │   ├── Standup 2024-01-15.md
+│   │   ├── Standup 2024-01-15.md    # (or .html with --format html)
 │   │   ├── images/
 │   │   │   └── image_001.png
 │   │   └── attachments/
@@ -130,17 +145,23 @@ output_dir/
 
 ## Supported Content
 
-| Content Type | How It's Exported |
-|---|---|
-| Rich text | Markdown with **bold**, *italic*, ~~strikethrough~~, superscript, subscript |
-| Hyperlinks | `[text](url)` |
-| Images | Saved to `images/` subdirectory, referenced in Markdown |
-| Tables | Standard Markdown table syntax |
-| Embedded files | Saved to `attachments/` subdirectory, linked in Markdown |
+| Content Type | Markdown | HTML |
+|---|---|---|
+| Bold | `**text**` | `<strong>` |
+| Italic | `*text*` | `<em>` |
+| Underline | `*text*` (italic fallback) | `<u>` |
+| Strikethrough | `~~text~~` | `<del>` |
+| Superscript | `<sup>` | `<sup>` |
+| Subscript | `<sub>` | `<sub>` |
+| Hyperlinks | `[text](url)` | `<a href="...">` |
+| Headings | `# H1` – `###### H6` | `<h1>` – `<h6>` |
+| Images | `![alt](./images/...)` | `<img src="./images/...">` |
+| Tables | Markdown table syntax | `<table>` |
+| Embedded files | `[name](./attachments/...)` | `<a href="./attachments/...">` |
 
 Image formats detected automatically: PNG, JPEG, GIF, BMP, WEBP.
 
-> **Note:** Underline is rendered as italic since Markdown has no native underline syntax.
+> **Note:** Underline is rendered as italic in Markdown since Markdown has no native underline syntax. HTML output uses the `<u>` tag.
 
 ## Exit Codes
 
@@ -154,7 +175,7 @@ Errors are printed to stderr. Use `-v` or `--debug` for additional detail.
 
 ## Testing
 
-The project includes a test suite covering utilities, data models, Markdown rendering, content extraction, and CLI logic.
+The project includes a test suite covering utilities, data models, converter rendering, content extraction, and CLI logic.
 
 ### Setup
 
@@ -191,8 +212,10 @@ tests/
 │   ├── Example-Section-1 (On 2-25-26 - 3).one
 │   ├── Example-Section-2 (On 2-25-26 - 3).one
 │   └── Example-Section-2 (On 2-25-26).one
-├── test_cli.py                   # CLI argument parsing and section deduplication
+├── test_base_converter.py        # Base converter file I/O and filename utilities
+├── test_cli.py                   # CLI argument parsing, --format flag, deduplication
 ├── test_content_extractor.py     # Text decoding, image format detection, type parsing
+├── test_html_converter.py        # HTML rendering, escaping, file writing
 ├── test_markdown_converter.py    # Markdown rendering, file/image/attachment writing
 ├── test_models.py                # Data model construction and immutability
 └── test_utils.py                 # File discovery and name extraction
@@ -202,11 +225,13 @@ tests/
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
+| `converter/base.py` | File I/O, directory creation, filename sanitization, deduplication | All shared converter logic |
+| `converter/markdown.py` | Rendering for every content type | Bold, italic, strikethrough, links, super/subscript, tables, images, attachments |
+| `converter/html.py` | HTML rendering, XSS escaping, document structure | All content types, self-contained HTML, CSS embedding |
+| `model/` | All dataclass defaults, immutability (`TextRun` is frozen) | All content types: `RichText`, `ImageElement`, `TableElement`, `EmbeddedFile` |
+| `parser/content_extractor.py` | Text decoding (hex, UTF-16, ASCII), garbled text detection | All image formats (PNG, JPEG, GIF, BMP, WEBP), edge cases |
+| `cli.py` | Section deduplication, `--format` flag, logging levels | All format choices, error handling |
 | `utils.py` | File discovery, section name parsing, notebook name extraction | File glob, `.onetoc2` exclusion, date suffix stripping |
-| `model/` | All dataclass defaults, immutability (`TextRun` is frozen), element construction | All content types: `RichText`, `ImageElement`, `TableElement`, `EmbeddedFile` |
-| `converter/markdown.py` | Rendering for every content type, file writing, filename sanitization | Bold, italic, strikethrough, links, super/subscript, tables, images, attachments |
-| `parser/content_extractor.py` | Text decoding (hex, UTF-16, ASCII), garbled text detection, image format magic bytes | All image formats (PNG, JPEG, GIF, BMP, WEBP), edge cases |
-| `cli.py` | Section deduplication with date parsing, 2-digit year normalization | Dated vs undated files, multiple versions, empty input |
 
 ## How It Works
 
@@ -214,7 +239,7 @@ tests/
 2. **Deduplicate** — Groups files by section name and keeps only the latest version
 3. **Parse** — Reads each `.one` file using the [pyOneNote](https://pypi.org/project/pyOneNote/) library to extract raw objects from the MS-ONESTORE binary format
 4. **Extract** — Converts raw objects into a structured model (notebooks, sections, pages, content elements)
-5. **Convert** — Renders each page as Markdown, writing images and attachments to disk
+5. **Convert** — Renders each page as Markdown and/or HTML, writing images and attachments to disk
 
 ## Limitations
 

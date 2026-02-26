@@ -1,4 +1,4 @@
-"""CLI entry point for the OneNote to Markdown exporter."""
+"""CLI entry point for the OneNote exporter."""
 
 import argparse
 import logging
@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+from onenote_export.converter.html import HTMLConverter
 from onenote_export.converter.markdown import MarkdownConverter
 from onenote_export.model.notebook import Notebook
 from onenote_export.parser.content_extractor import extract_section
@@ -21,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     """Main entry point for the onenote-export CLI."""
     parser = argparse.ArgumentParser(
         prog="onenote-export",
-        description="Export OneNote (.one) files to Markdown",
+        description="Export OneNote (.one) files to Markdown or HTML",
     )
     parser.add_argument(
         "-i",
@@ -33,7 +34,14 @@ def main(argv: list[str] | None = None) -> int:
         "-o",
         "--output",
         required=True,
-        help="Output directory for Markdown files",
+        help="Output directory for exported files",
+    )
+    parser.add_argument(
+        "-f",
+        "--format",
+        choices=["markdown", "html", "both"],
+        default="markdown",
+        help="Output format (default: markdown)",
     )
     parser.add_argument(
         "-v",
@@ -82,6 +90,13 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Found {len(one_files)} .one file(s) in {input_dir}")
 
+    # Build converter list based on format choice
+    converters = []
+    if args.format in ("markdown", "both"):
+        converters.append(MarkdownConverter(output_dir))
+    if args.format in ("html", "both"):
+        converters.append(HTMLConverter(output_dir))
+
     # Group files by parent directory (notebook)
     notebooks: dict[Path, list[Path]] = {}
     for f in one_files:
@@ -89,13 +104,10 @@ def main(argv: list[str] | None = None) -> int:
         notebooks.setdefault(parent, []).append(f)
 
     # Deduplicate: keep only the latest version of each section
-    # Files like "ADI (On 2-25-26).one" and "ADI.one (On 10-3-22).one"
-    # are the same section at different dates
     for notebook_dir in notebooks:
         notebooks[notebook_dir] = _deduplicate_sections(notebooks[notebook_dir])
 
     # Process each notebook
-    converter = MarkdownConverter(output_dir)
     total_files = 0
     total_pages = 0
     errors: list[str] = []
@@ -114,11 +126,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  Section: {section_name} ({section_file.name})")
 
             try:
-                # Parse the .one file
                 store_parser = OneStoreParser(section_file)
                 parsed = store_parser.parse()
 
-                # Extract structured content
                 section = extract_section(parsed)
                 section.name = section_name
 
@@ -133,20 +143,21 @@ def main(argv: list[str] | None = None) -> int:
                 errors.append(error_msg)
                 logging.debug("Full traceback:", exc_info=True)
 
-        # Write the notebook
+        # Write the notebook with each converter
         if notebook.sections:
-            try:
-                if args.flat:
-                    for section in notebook.sections:
-                        files = converter.convert_section(section)
+            for converter in converters:
+                try:
+                    if args.flat:
+                        for section in notebook.sections:
+                            files = converter.convert_section(section)
+                            total_files += len(files)
+                    else:
+                        files = converter.convert_notebook(notebook)
                         total_files += len(files)
-                else:
-                    files = converter.convert_notebook(notebook)
-                    total_files += len(files)
-            except Exception as e:
-                error_msg = f"  ERROR writing notebook {notebook_name}: {e}"
-                print(error_msg, file=sys.stderr)
-                errors.append(error_msg)
+                except Exception as e:
+                    error_msg = f"  ERROR writing notebook {notebook_name}: {e}"
+                    print(error_msg, file=sys.stderr)
+                    errors.append(error_msg)
 
     # Summary
     print(f"\n{'=' * 50}")
@@ -197,7 +208,6 @@ def _deduplicate_sections(files: list[Path]) -> list[Path]:
 
     result: list[Path] = []
     for section_name, versions in sorted(section_versions.items()):
-        # Sort by date descending and take the latest
         versions.sort(key=lambda x: x[1], reverse=True)
         latest = versions[0][0]
         result.append(latest)

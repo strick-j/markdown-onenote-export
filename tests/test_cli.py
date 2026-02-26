@@ -104,6 +104,54 @@ class TestMainHappyPath:
         md_files = list(out_dir.rglob("*.md"))
         assert len(md_files) >= 1
 
+    def test_format_html(self, tmp_path):
+        """--format html produces .html files only."""
+        result = main(
+            [
+                "-i",
+                str(NOTEBOOK_DIR),
+                "-o",
+                str(tmp_path / "html_out"),
+                "--format",
+                "html",
+            ]
+        )
+        assert result == 0
+        out_dir = tmp_path / "html_out"
+        html_files = list(out_dir.rglob("*.html"))
+        md_files = list(out_dir.rglob("*.md"))
+        assert len(html_files) >= 1
+        assert len(md_files) == 0
+
+    def test_format_both(self, tmp_path):
+        """--format both produces both .md and .html files."""
+        result = main(
+            [
+                "-i",
+                str(NOTEBOOK_DIR),
+                "-o",
+                str(tmp_path / "both_out"),
+                "--format",
+                "both",
+            ]
+        )
+        assert result == 0
+        out_dir = tmp_path / "both_out"
+        html_files = list(out_dir.rglob("*.html"))
+        md_files = list(out_dir.rglob("*.md"))
+        assert len(html_files) >= 1
+        assert len(md_files) >= 1
+
+    def test_default_format_is_markdown(self, tmp_path):
+        """Default format produces only .md files."""
+        result = main(["-i", str(NOTEBOOK_DIR), "-o", str(tmp_path / "default_out")])
+        assert result == 0
+        out_dir = tmp_path / "default_out"
+        md_files = list(out_dir.rglob("*.md"))
+        html_files = list(out_dir.rglob("*.html"))
+        assert len(md_files) >= 1
+        assert len(html_files) == 0
+
 
 class TestMainErrorHandling:
     """Tests for main() error paths."""
@@ -129,14 +177,12 @@ class TestMainErrorHandling:
 
     def test_parse_error_collected(self, tmp_path):
         """Parse errors are collected but don't crash the CLI."""
-        # Create a fake .one file that will fail to parse
         bad_dir = tmp_path / "bad_notebook"
         bad_dir.mkdir()
         bad_file = bad_dir / "bad.one"
         bad_file.write_bytes(b"not a real onenote file")
 
         result = main(["-i", str(bad_dir), "-o", str(tmp_path / "out")])
-        # Should return 2 (errors with no files written) or continue
         assert result in (0, 2)
 
     @pytest.mark.skipif(not _HAS_TEST_DATA, reason="test_data not available")
@@ -155,8 +201,34 @@ class TestMainErrorHandling:
                     str(tmp_path / "out"),
                 ]
             )
-            # Should handle the error gracefully
             assert result in (0, 2)
+
+
+class TestFormatArgument:
+    """Tests for --format argument parsing (no test data required)."""
+
+    def test_invalid_format_rejected(self, tmp_path, capsys):
+        """Invalid format value causes argparse error."""
+        with pytest.raises(SystemExit) as exc_info:
+            main(
+                [
+                    "-i",
+                    str(tmp_path),
+                    "-o",
+                    str(tmp_path / "out"),
+                    "--format",
+                    "pdf",
+                ]
+            )
+        assert exc_info.value.code == 2
+
+    def test_short_flag_works(self, tmp_path):
+        """Short -f flag works for format."""
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        # Will return 1 because no .one files, but argparse should not fail
+        result = main(["-i", str(empty_dir), "-o", str(tmp_path / "out"), "-f", "html"])
+        assert result == 1
 
 
 @pytest.mark.skipif(not _HAS_TEST_DATA, reason="test_data not available")

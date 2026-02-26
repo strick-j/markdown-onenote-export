@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "markdown-onenote-export"
+name = "onenote-exporter"
 version = "0.1.0"
-description = "Export Microsoft OneNote (.one) files to Markdown"
+description = "Export Microsoft OneNote (.one) files to Markdown or HTML"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = ["pyOneNote>=0.0.2"]

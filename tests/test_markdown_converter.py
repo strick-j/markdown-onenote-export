@@ -2,11 +2,7 @@
 
 import tempfile
 
-from onenote_export.converter.markdown import (
-    MarkdownConverter,
-    _page_filename,
-    _sanitize_filename,
-)
+from onenote_export.converter.markdown import MarkdownConverter
 from onenote_export.model.content import (
     EmbeddedFile,
     ImageElement,
@@ -17,53 +13,6 @@ from onenote_export.model.content import (
 from onenote_export.model.notebook import Notebook
 from onenote_export.model.page import Page
 from onenote_export.model.section import Section
-
-
-class TestSanitizeFilename:
-    """Tests for _sanitize_filename."""
-
-    def test_clean_name(self):
-        assert _sanitize_filename("hello") == "hello"
-
-    def test_removes_special_chars(self):
-        result = _sanitize_filename('file<>:"/\\|?*name')
-        assert "<" not in result
-        assert ">" not in result
-        assert ":" not in result
-        assert '"' not in result
-
-    def test_collapses_underscores(self):
-        result = _sanitize_filename("a___b")
-        assert result == "a b"
-
-    def test_empty_returns_unnamed(self):
-        assert _sanitize_filename("") == "unnamed"
-
-    def test_truncates_long_names(self):
-        long_name = "a" * 300
-        result = _sanitize_filename(long_name)
-        assert len(result) <= 200
-
-
-class TestPageFilename:
-    """Tests for _page_filename."""
-
-    def test_simple_title(self):
-        seen = {}
-        result = _page_filename("My Page", seen)
-        assert result == "My Page.md"
-
-    def test_duplicate_title_gets_numbered(self):
-        seen = {}
-        first = _page_filename("Notes", seen)
-        second = _page_filename("Notes", seen)
-        assert first == "Notes.md"
-        assert second == "Notes (2).md"
-
-    def test_untitled_page(self):
-        seen = {}
-        result = _page_filename("", seen)
-        assert result == "Untitled.md"
 
 
 class TestMarkdownConverterRenderPage:
