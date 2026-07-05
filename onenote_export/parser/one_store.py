@@ -33,7 +33,25 @@ def _patch_pyonenote() -> None:
            cProperties : uint32  — number of child PropertySets
            prid        : PropertyID (4 bytes) — only if cProperties > 0
            Data        : cProperties consecutive PropertySet structures
+
+    3. ``FileNode.__init__`` crashes on a FileNodeListFragment
+       *terminator* node.  A terminator has ``file_node_id == 0`` (or
+       255), which is not in pyOneNote's ``_FileNodeIDs`` map, so its
+       type resolves to ``"Invalid"`` and the dispatch chain's silent
+       ``else`` branch never sets ``self.data``.  The constructor then
+       unconditionally recurses for reference nodes
+       (``if baseType == 2: FileNodeList(..., self.data.ref)``) and
+       dereferences the missing ``self.data``.  The fragment loop *does*
+       break on ``id in (0, 255)`` — but only *after* the node is
+       constructed, so the crash beats the guard.  Files whose root
+       fragment ends on a "dirty" terminator (id 0 with non-zero upper
+       bits, e.g. large/heavily-revised sections) fail to parse at all.
+
+       We wrap the constructor so a terminator node that raises during
+       construction is treated as empty (``data = None``, no children);
+       the existing fragment-loop break then ends the fragment cleanly.
     """
+    from pyOneNote.FileNode import FileNode as _FileNode
     from pyOneNote.FileNode import ObjectSpaceObjectStreamOfIDs
 
     _original_read = ObjectSpaceObjectStreamOfIDs.read
@@ -120,6 +138,26 @@ def _patch_pyonenote() -> None:
                 raise ValueError(f"rgPrids[{i}].type 0x{ptype:x} is not valid")
 
     PropertySet.__init__ = _patched_init
+
+    _original_filenode_init = _FileNode.__init__
+
+    def _patched_filenode_init(self, file, document):
+        try:
+            _original_filenode_init(self, file, document)
+        except AttributeError:
+            # Only swallow the terminator case (id 0/255); anything else
+            # is a genuine parse error and must propagate.
+            header = getattr(self, "file_node_header", None)
+            fnid = getattr(header, "file_node_id", None)
+            if fnid in (0, 255):
+                if not hasattr(self, "data"):
+                    self.data = None
+                if not hasattr(self, "children"):
+                    self.children = []
+            else:
+                raise
+
+    _FileNode.__init__ = _patched_filenode_init
 
 
 # Apply patches at import time
@@ -350,12 +388,19 @@ class OneStoreParser:
                 pages.append(ExtractedPage(objects=all_content))
             return pages
 
-        # Build a lookup: GUID -> page metadata
+        # Build a lookup: GUID -> page metadata.
+        #
+        # A page's object space contains MULTIPLE metadata revisions.  The
+        # first one encountered in traversal order is the current revision;
+        # later ones are stale copies carrying an outdated PageLevel and/or
+        # title (from before the page was renamed or promoted/demoted to a
+        # subpage).  Keep the first and never overwrite — overwriting with a
+        # stale copy corrupts both the subpage level and the title.
         meta_by_guid: dict[str, ExtractedObject] = {}
         for meta in page_metas:
             guid = _extract_guid(meta.identity)
-            # Later entries (newer revisions) overwrite earlier ones
-            meta_by_guid[guid] = meta
+            if guid not in meta_by_guid:
+                meta_by_guid[guid] = meta
 
         # Orphan metas: metadata GUIDs with no page node (old revisions)
         orphan_metas: dict[str, ExtractedObject] = {
@@ -375,8 +420,13 @@ class OneStoreParser:
             _NUMBER_LIST,
         }
 
-        # Build one page per content GUID (GUID that has a PageNode)
-        seen_titles: dict[str, int] = {}
+        # Build one page per content GUID (GUID that has a PageNode).
+        # Each unique page-node GUID is a distinct page; revisions of the
+        # *same* page already share a GUID and are collapsed by the
+        # ``page_node_guids`` uniqueness above.  We deliberately do NOT
+        # deduplicate by title — distinct pages legitimately share titles
+        # (e.g. repeated "Example Output" subpages), and collapsing them
+        # silently drops real content.
         for content_guid in page_node_guids:
             objs = guid_objects.get(content_guid, [])
 
@@ -418,15 +468,7 @@ class OneStoreParser:
                 objects=content,
             )
 
-            # Deduplicate by title — keep the version with more content
-            key = title.lower().strip()
-            if key in seen_titles:
-                idx = seen_titles[key]
-                if len(content) > len(pages[idx].objects):
-                    pages[idx] = page
-            else:
-                seen_titles[key] = len(pages)
-                pages.append(page)
+            pages.append(page)
 
         return pages
 
