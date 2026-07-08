@@ -557,7 +557,7 @@ class TestCollapsibleContentHyperlinks:
         for elem in section3_note1.elements:
             if isinstance(elem, RichText):
                 for run in elem.runs:
-                    assert "\uFDDF" not in run.text, (
+                    assert "\ufddf" not in run.text, (
                         f"Raw field code marker in text: {run.text!r}"
                     )
                     assert "HYPERLINK" not in run.text, (
@@ -593,8 +593,8 @@ class TestCollapsibleContentHyperlinks:
         converter = MarkdownConverter(tmp_path)
         md = converter.render_page(section3_note1)
         # Should not contain raw field codes
-        assert "\uFDDF" not in md, f"Raw field code in markdown:\n{md}"
-        assert "\uFDF3" not in md, f"Raw field code in markdown:\n{md}"
+        assert "\ufddf" not in md, f"Raw field code in markdown:\n{md}"
+        assert "\ufdf3" not in md, f"Raw field code in markdown:\n{md}"
         # Should contain proper markdown links
         link_pattern = re.compile(r"\[.+?\]\(.+?\)")
         links = link_pattern.findall(md)
@@ -658,9 +658,7 @@ class TestCollapsibleContentOrdering:
     def test_notes_heading_before_note1_bullet(self, section3_note1):
         """'Notes' heading should appear before 'Note 1 - Meeting Notes' bullet."""
         texts = self._all_texts(section3_note1)
-        notes_idx = next(
-            (i for i, t in enumerate(texts) if t.strip() == "Notes"), None
-        )
+        notes_idx = next((i for i, t in enumerate(texts) if t.strip() == "Notes"), None)
         note1_idx = next(
             (i for i, t in enumerate(texts) if "Note 1 - Meeting" in t), None
         )
@@ -677,32 +675,22 @@ class TestCollapsibleContentOrdering:
         note1_idx = next(
             (i for i, t in enumerate(texts) if "Note 1 - Meeting" in t), None
         )
-        note2_idx = next(
-            (i for i, t in enumerate(texts) if "Note 2" in t), None
-        )
+        note2_idx = next((i for i, t in enumerate(texts) if "Note 2" in t), None)
         assert note1_idx is not None and note2_idx is not None
         assert note1_idx < note2_idx
 
     def test_note2_before_note3(self, section3_note1):
         """'Note 2' should appear before 'Note 3'."""
         texts = self._all_texts(section3_note1)
-        note2_idx = next(
-            (i for i, t in enumerate(texts) if "Note 2" in t), None
-        )
-        note3_idx = next(
-            (i for i, t in enumerate(texts) if "Note 3" in t), None
-        )
+        note2_idx = next((i for i, t in enumerate(texts) if "Note 2" in t), None)
+        note3_idx = next((i for i, t in enumerate(texts) if "Note 3" in t), None)
         assert note2_idx is not None and note3_idx is not None
         assert note2_idx < note3_idx
 
     def test_note3_before_note4(self, section3_note1):
         """'Note 3' should appear before 'Note 4'."""
         texts = self._all_texts(section3_note1)
-        note3_idx = next(
-            (i for i, t in enumerate(texts) if "Note 3" in t), None
-        )
-        note4_idx = next(
-            (i for i, t in enumerate(texts) if "Note 4" in t), None
-        )
+        note3_idx = next((i for i, t in enumerate(texts) if "Note 3" in t), None)
+        note4_idx = next((i for i, t in enumerate(texts) if "Note 4" in t), None)
         assert note3_idx is not None and note4_idx is not None
         assert note3_idx < note4_idx

@@ -44,7 +44,10 @@ class TestHierarchy:
         ("Zeta-Sub-2a", 3),  # level-3 subpage
         ("Alpha", 1),
         ("Alpha-Sub-1", 2),
-        ("Mike", 1),  # leaf; last despite "M" — order is display order, not alphabetical
+        (
+            "Mike",
+            1,
+        ),  # leaf; last despite "M" — order is display order, not alphabetical
     ]
 
     def test_order_and_levels(self):
