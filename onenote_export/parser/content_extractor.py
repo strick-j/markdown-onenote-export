@@ -258,17 +258,12 @@ def _reorder_by_outline_hierarchy(
         if group:
             for g in group:
                 _emit(g)
-        elif (
-            orphan_idx < len(orphans)
-            and oe_id not in oes_with_children
-        ):
+        elif orphan_idx < len(orphans) and oe_id not in oes_with_children:
             # Contentless leaf OE — assign next orphan.
             _emit(orphans[orphan_idx])
             orphan_idx += 1
 
-        child_refs = oe_obj.properties.get(
-            "ElementChildNodesOfVersionHistory", []
-        )
+        child_refs = oe_obj.properties.get("ElementChildNodesOfVersionHistory", [])
         if isinstance(child_refs, str):
             child_refs = [child_refs]
         if isinstance(child_refs, list):
@@ -281,9 +276,7 @@ def _reorder_by_outline_hierarchy(
     # ordered by original index.  Nodes with a vert value follow, sorted
     # ascending (top-to-bottom on the page).
     outline_nodes = [
-        (i, obj)
-        for i, obj in enumerate(objects)
-        if obj.obj_type == _OUTLINE_NODE
+        (i, obj) for i, obj in enumerate(objects) if obj.obj_type == _OUTLINE_NODE
     ]
 
     def _node_sort_key(
@@ -299,9 +292,7 @@ def _reorder_by_outline_hierarchy(
 
     for _, node in outline_nodes:
         _emit(node)
-        child_refs = node.properties.get(
-            "ElementChildNodesOfVersionHistory", []
-        )
+        child_refs = node.properties.get("ElementChildNodesOfVersionHistory", [])
         if isinstance(child_refs, str):
             child_refs = [child_refs]
         if isinstance(child_refs, list):
@@ -697,7 +688,7 @@ def _extract_rich_text(
 
     # Check for HYPERLINK field codes embedded in the text
     # (collapsible sections store URLs as field codes in the text itself)
-    has_field_code = "\uFDDF" in text or "\uFDF3" in text
+    has_field_code = "\ufddf" in text or "\ufdf3" in text
     wz_hyperlink = _clean_text(str(props.get("WzHyperlinkUrl", "")))
 
     # Check if this is title text
@@ -714,8 +705,24 @@ def _extract_rich_text(
         for i, (seg_text, seg_url) in enumerate(segments):
             # First segment without a field-code URL inherits WzHyperlinkUrl
             url = seg_url if seg_url else (wz_hyperlink if i == 0 else "")
-            runs.append(TextRun(
-                text=seg_text,
+            runs.append(
+                TextRun(
+                    text=seg_text,
+                    bold=bold,
+                    italic=italic,
+                    underline=underline,
+                    strikethrough=strikethrough,
+                    superscript=superscript,
+                    subscript=subscript,
+                    font=font,
+                    font_size=font_size,
+                    hyperlink_url=url,
+                )
+            )
+    else:
+        runs.append(
+            TextRun(
+                text=text,
                 bold=bold,
                 italic=italic,
                 underline=underline,
@@ -724,21 +731,9 @@ def _extract_rich_text(
                 subscript=subscript,
                 font=font,
                 font_size=font_size,
-                hyperlink_url=url,
-            ))
-    else:
-        runs.append(TextRun(
-            text=text,
-            bold=bold,
-            italic=italic,
-            underline=underline,
-            strikethrough=strikethrough,
-            superscript=superscript,
-            subscript=subscript,
-            font=font,
-            font_size=font_size,
-            hyperlink_url=wz_hyperlink,
-        ))
+                hyperlink_url=wz_hyperlink,
+            )
+        )
 
     indent_level = 0
     list_type = ""
